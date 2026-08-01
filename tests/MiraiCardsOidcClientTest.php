@@ -8,6 +8,7 @@ use EverstarAsia\MiraiCardsLogin\Data\MiraiCardsIdentity;
 use EverstarAsia\MiraiCardsLogin\Exceptions\MiraiCardsAuthenticationException;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Http;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
@@ -23,6 +24,23 @@ class MiraiCardsOidcClientTest extends TestCase
         Http::fake([
             'https://mirai.cards/.well-known/openid-configuration' => Http::response($this->discovery()),
         ]);
+    }
+
+    public function test_configuration_uses_permanent_issuer_and_application_callback(): void
+    {
+        $this->assertSame('https://mirai.cards', config('miraicards.issuer'));
+        $this->assertSame(
+            'https://client.test/auth/miraicards/callback',
+            config('miraicards.callback_url'),
+        );
+    }
+
+    public function test_login_button_is_registered_as_a_namespaced_anonymous_component(): void
+    {
+        $html = Blade::render('<x-miraicards::login-button />');
+
+        $this->assertStringContainsString('/auth/miraicards/redirect', $html);
+        $this->assertStringContainsString('Sign in with MiraiCards', $html);
     }
 
     public function test_redirect_uses_pkce_nonce_and_independent_state_for_concurrent_tabs(): void

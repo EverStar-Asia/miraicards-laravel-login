@@ -18,17 +18,11 @@ abstract class TestCase extends Orchestra
         $app['config']->set('app.url', 'https://client.test');
         $app['config']->set('app.key', 'base64:'.base64_encode(str_repeat('k', 32)));
         $app['config']->set('miraicards', [
-            'issuer' => 'https://mirai.cards',
+            ...$app['config']->get('miraicards'),
             'client_id' => 'client-id',
             'client_secret' => 'client-secret',
             'callback_url' => 'https://client.test/auth/miraicards/callback',
-            'guard' => 'web',
-            'post_login_route' => 'dashboard',
-            'scopes' => ['openid', 'profile'],
             'cache_store' => 'array',
-            'connect_timeout' => 1,
-            'request_timeout' => 1,
-            'clock_skew' => 60,
         ]);
     }
 

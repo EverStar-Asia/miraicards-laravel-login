@@ -4,6 +4,7 @@ namespace EverstarAsia\MiraiCardsLogin;
 
 use EverstarAsia\MiraiCardsLogin\Console\MiraiCardsDoctorCommand;
 use EverstarAsia\MiraiCardsLogin\Http\Controllers\MiraiCardsLoginController;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -17,6 +18,7 @@ final class MiraiCardsServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'miraicards');
+        Blade::anonymousComponentPath(__DIR__.'/../resources/views/components', 'miraicards');
         $this->publishes([
             __DIR__.'/../config/miraicards.php' => config_path('miraicards.php'),
         ], 'miraicards-config');
