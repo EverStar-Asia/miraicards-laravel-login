@@ -41,6 +41,9 @@ class MiraiCardsOidcClientTest extends TestCase
 
         $this->assertStringContainsString('/auth/miraicards/redirect', $html);
         $this->assertStringContainsString('Sign in with MiraiCards', $html);
+        $this->assertStringContainsString('/vendor/miraicards/btn_miraicardsOIDC.png', $html);
+        $this->assertStringContainsString('width="328"', $html);
+        $this->assertStringContainsString('height="63"', $html);
     }
 
     public function test_redirect_uses_pkce_nonce_and_independent_state_for_concurrent_tabs(): void

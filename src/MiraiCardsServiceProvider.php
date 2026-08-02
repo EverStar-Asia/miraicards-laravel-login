@@ -25,6 +25,9 @@ final class MiraiCardsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views' => resource_path('views/vendor/miraicards'),
         ], 'miraicards-views');
+        $this->publishes([
+            __DIR__.'/../resources/images' => public_path('vendor/miraicards'),
+        ], 'miraicards-assets');
 
         Route::middleware('web')->group(function (): void {
             Route::get('/auth/miraicards/redirect', [MiraiCardsLoginController::class, 'redirect'])

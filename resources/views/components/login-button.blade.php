@@ -1,7 +1,14 @@
 <a {{ $attributes->merge([
     'href' => route('miraicards.redirect'),
-    'class' => 'inline-flex min-h-11 items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-900 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+    'class' => 'inline-flex items-center justify-center align-middle focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+    'style' => 'display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;',
 ]) }}>
-    <span aria-hidden="true" class="grid size-6 place-items-center rounded-md bg-indigo-600 text-sm font-bold text-white">M</span>
-    <span>{{ $slot->isEmpty() ? __('Sign in with MiraiCards') : $slot }}</span>
+    <img
+        src="{{ asset('vendor/miraicards/btn_miraicardsOIDC.png') }}"
+        alt="{{ $slot->isEmpty() ? __('Sign in with MiraiCards') : $slot }}"
+        width="328"
+        height="63"
+        class="block h-auto w-full max-w-[20.5rem]"
+        style="display: block; max-width: 100%; height: auto;"
+    >
 </a>
