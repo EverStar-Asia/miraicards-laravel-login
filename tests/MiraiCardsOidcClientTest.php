@@ -40,9 +40,23 @@ class MiraiCardsOidcClientTest extends TestCase
 
         $this->assertStringContainsString('/auth/miraicards/redirect', $html);
         $this->assertStringContainsString('Sign in with MiraiCards', $html);
-        $this->assertStringContainsString('/vendor/miraicards/btn_miraicardsOIDC.png', $html);
+        $this->assertStringContainsString('/auth/miraicards/assets/login-button.png', $html);
         $this->assertStringContainsString('width="328"', $html);
         $this->assertStringContainsString('height="63"', $html);
+    }
+
+    public function test_login_button_image_is_served_directly_by_the_package(): void
+    {
+        $response = $this->get('https://client.test/auth/miraicards/assets/login-button.png');
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('Cache-Control', 'max-age=604800, public')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertSame(
+            file_get_contents(__DIR__.'/../resources/images/btn_miraicardsOIDC.png'),
+            $response->streamedContent(),
+        );
     }
 
     public function test_redirect_uses_pkce_nonce_and_independent_state_for_concurrent_tabs(): void

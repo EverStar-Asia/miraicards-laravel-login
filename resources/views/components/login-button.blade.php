@@ -4,7 +4,7 @@
     'style' => 'display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;',
 ]) }}>
     <img
-        src="{{ asset('vendor/miraicards/btn_miraicardsOIDC.png') }}"
+        src="{{ route('miraicards.assets.login-button') }}"
         alt="{{ $slot->isEmpty() ? __('Sign in with MiraiCards') : $slot }}"
         width="328"
         height="63"

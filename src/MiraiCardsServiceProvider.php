@@ -3,6 +3,7 @@
 namespace EverstarAsia\MiraiCardsLogin;
 
 use EverstarAsia\MiraiCardsLogin\Console\MiraiCardsDoctorCommand;
+use EverstarAsia\MiraiCardsLogin\Http\Controllers\MiraiCardsAssetController;
 use EverstarAsia\MiraiCardsLogin\Http\Controllers\MiraiCardsLoginController;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
@@ -25,9 +26,9 @@ final class MiraiCardsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views' => resource_path('views/vendor/miraicards'),
         ], 'miraicards-views');
-        $this->publishes([
-            __DIR__.'/../resources/images' => public_path('vendor/miraicards'),
-        ], 'miraicards-assets');
+
+        Route::get('/auth/miraicards/assets/login-button.png', [MiraiCardsAssetController::class, 'loginButton'])
+            ->name('miraicards.assets.login-button');
 
         Route::middleware('web')->group(function (): void {
             Route::get('/auth/miraicards/redirect', [MiraiCardsLoginController::class, 'redirect'])
