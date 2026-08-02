@@ -20,6 +20,9 @@ use Lcobucci\JWT\Token\Plain;
 
 final class MiraiCardsOidcClient
 {
+    /** @var list<string> */
+    private const PROTOCOL_SCOPES = ['openid', 'basic_identity'];
+
     public function __construct(
         private readonly HttpFactory $http,
         private readonly LoginTransactionStore $transactions,
@@ -42,13 +45,14 @@ final class MiraiCardsOidcClient
             'verifier' => $verifier,
             'callback' => $callback,
             'intended' => $this->safeIntended($intended),
+            'scopes' => self::PROTOCOL_SCOPES,
         ], $binding);
 
         $query = http_build_query([
             'client_id' => config('miraicards.client_id'),
             'redirect_uri' => $callback,
             'response_type' => 'code',
-            'scope' => implode(' ', $this->scopes()),
+            'scope' => implode(' ', self::PROTOCOL_SCOPES),
             'state' => $state,
             'nonce' => $nonce,
             'code_challenge' => LoginTransactionStore::base64Url(hash('sha256', $verifier, true)),
@@ -96,6 +100,7 @@ final class MiraiCardsOidcClient
             || ! is_string($tokenResponse['access_token'] ?? null)) {
             throw new MiraiCardsAuthenticationException('The provider returned an invalid token response.');
         }
+        $grantedScopes = $this->grantedScopes($tokenResponse, $transaction);
 
         $token = $this->validateIdToken($tokenResponse['id_token'], (string) $transaction['nonce']);
         $userinfo = $this->request()
@@ -114,15 +119,16 @@ final class MiraiCardsOidcClient
             issuer: (string) $claims->get('iss'),
             subject: $subject,
             name: $this->optionalString($userinfo, 'name'),
-            preferredUsername: $this->optionalString($userinfo, 'preferred_username'),
-            picture: $this->optionalString($userinfo, 'picture'),
-            profile: $this->optionalString($userinfo, 'profile'),
-            locale: $this->optionalString($userinfo, 'locale'),
-            updatedAt: isset($userinfo['updated_at']) && is_int($userinfo['updated_at']) ? (new DateTimeImmutable)->setTimestamp($userinfo['updated_at']) : null,
-            scopes: $this->scopes(),
+            preferredUsername: null,
+            picture: null,
+            profile: null,
+            locale: null,
+            updatedAt: null,
+            scopes: $grantedScopes,
             issuedAt: $claims->get('iat'),
             expiresAt: $claims->get('exp'),
             authenticatedAt: (new DateTimeImmutable)->setTimestamp((int) $claims->get('auth_time')),
+            email: $this->optionalString($userinfo, 'email'),
         );
     }
 
@@ -188,9 +194,12 @@ final class MiraiCardsOidcClient
 
         $document = Cache::store(config('miraicards.cache_store'))->remember($key, 3600, fn (): array => $this->request()
             ->get($issuer.'/.well-known/openid-configuration')->throw()->json());
+        $supportedScopes = $document['scopes_supported'] ?? null;
         if (($document['issuer'] ?? null) !== $issuer
             || ($document['code_challenge_methods_supported'] ?? null) !== ['S256']
-            || ! in_array('RS256', $document['id_token_signing_alg_values_supported'] ?? [], true)) {
+            || ! in_array('RS256', $document['id_token_signing_alg_values_supported'] ?? [], true)
+            || ! is_array($supportedScopes)
+            || collect(self::PROTOCOL_SCOPES)->diff($supportedScopes)->isNotEmpty()) {
             throw new MiraiCardsAuthenticationException('The provider discovery document is incompatible.');
         }
 
@@ -244,10 +253,30 @@ final class MiraiCardsOidcClient
         return $intended;
     }
 
-    /** @return list<string> */
-    private function scopes(): array
+    /**
+     * @param  array<string, mixed>  $tokenResponse
+     * @param  array<string, mixed>  $transaction
+     * @return list<string>
+     */
+    private function grantedScopes(array $tokenResponse, array $transaction): array
     {
-        return collect((array) config('miraicards.scopes'))->map('strval')->prepend('openid')->unique()->values()->all();
+        $scope = $tokenResponse['scope'] ?? null;
+        if (! is_string($scope)) {
+            throw new MiraiCardsAuthenticationException('The provider token response did not include its granted scopes.');
+        }
+
+        $grantedScopes = collect(preg_split('/\s+/', trim($scope)) ?: [])
+            ->filter()
+            ->unique()
+            ->values();
+        $requestedScopes = collect((array) ($transaction['scopes'] ?? []))->map('strval');
+
+        if ($grantedScopes->diff($requestedScopes)->isNotEmpty()
+            || collect(self::PROTOCOL_SCOPES)->diff($grantedScopes)->isNotEmpty()) {
+            throw new MiraiCardsAuthenticationException('The provider did not grant the required Basic identity scope.');
+        }
+
+        return $grantedScopes->all();
     }
 
     /** @param array<string, mixed> $values */

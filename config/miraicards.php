@@ -10,7 +10,6 @@ return [
     ),
     'guard' => env('MIRAICARDS_GUARD', 'web'),
     'post_login_route' => env('MIRAICARDS_POST_LOGIN_ROUTE', 'dashboard'),
-    'scopes' => ['openid', 'profile'],
     'cache_store' => env('MIRAICARDS_CACHE_STORE'),
     'connect_timeout' => (int) env('MIRAICARDS_CONNECT_TIMEOUT', 5),
     'request_timeout' => (int) env('MIRAICARDS_REQUEST_TIMEOUT', 10),

@@ -20,5 +20,6 @@ final readonly class MiraiCardsIdentity
         public DateTimeImmutable $issuedAt,
         public DateTimeImmutable $expiresAt,
         public DateTimeImmutable $authenticatedAt,
+        public ?string $email = null,
     ) {}
 }

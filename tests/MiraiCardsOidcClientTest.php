@@ -9,6 +9,7 @@ use EverstarAsia\MiraiCardsLogin\Exceptions\MiraiCardsAuthenticationException;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
@@ -20,10 +21,8 @@ class MiraiCardsOidcClientTest extends TestCase
     {
         parent::setUp();
 
+        Cache::store('array')->clear();
         Http::preventStrayRequests();
-        Http::fake([
-            'https://mirai.cards/.well-known/openid-configuration' => Http::response($this->discovery()),
-        ]);
     }
 
     public function test_configuration_uses_permanent_issuer_and_application_callback(): void
@@ -48,6 +47,8 @@ class MiraiCardsOidcClientTest extends TestCase
 
     public function test_redirect_uses_pkce_nonce_and_independent_state_for_concurrent_tabs(): void
     {
+        $this->fakeDiscovery();
+
         $first = $this->get('https://client.test/auth/miraicards/redirect?intended=%2Fevents')->assertRedirect();
         $second = $this->get('https://client.test/auth/miraicards/redirect?intended=https%3A%2F%2Fevil.test')->assertRedirect();
         parse_str((string) parse_url($first->headers->get('Location'), PHP_URL_QUERY), $firstQuery);
@@ -56,12 +57,15 @@ class MiraiCardsOidcClientTest extends TestCase
         $this->assertNotSame($firstQuery['state'], $secondQuery['state']);
         $this->assertSame('S256', $firstQuery['code_challenge_method']);
         $this->assertSame('code', $firstQuery['response_type']);
+        $this->assertSame('openid basic_identity', $firstQuery['scope']);
         $this->assertNotEmpty($firstQuery['nonce']);
         $this->assertSame('https://client.test/auth/miraicards/callback', $firstQuery['redirect_uri']);
     }
 
     public function test_callback_validates_tokens_logs_in_and_rejects_replayed_state(): void
     {
+        $this->fakeDiscovery();
+
         $redirect = $this->get('https://client.test/auth/miraicards/redirect?intended=%2Fevents');
         parse_str((string) parse_url($redirect->headers->get('Location'), PHP_URL_QUERY), $query);
         [$privatePem, $publicPem, $jwk] = $this->rsaKey();
@@ -82,24 +86,94 @@ class MiraiCardsOidcClientTest extends TestCase
         Http::fake([
             'https://mirai.cards/.well-known/openid-configuration' => Http::response($this->discovery()),
             'https://mirai.cards/.well-known/jwks.json' => Http::response(['keys' => [$jwk]]),
-            'https://mirai.cards/oauth/token' => Http::response(['access_token' => 'access-token', 'id_token' => $idToken]),
-            'https://mirai.cards/oauth/userinfo' => Http::response(['sub' => 'pairwise-subject', 'name' => 'Mirai User']),
+            'https://mirai.cards/oauth/token' => Http::response([
+                'access_token' => 'access-token',
+                'id_token' => $idToken,
+                'scope' => 'openid basic_identity',
+            ]),
+            'https://mirai.cards/oauth/userinfo' => Http::response([
+                'sub' => 'pairwise-subject',
+                'name' => 'Mirai User',
+                'email' => 'mirai@example.com',
+            ]),
+        ]);
+        $resolver = new class implements MiraiCardsUserResolver
+        {
+            public ?MiraiCardsIdentity $identity = null;
+
+            public function resolve(MiraiCardsIdentity $identity): Authenticatable
+            {
+                $this->identity = $identity;
+
+                return new GenericUser(['id' => 42, 'name' => $identity->name, 'email' => $identity->email]);
+            }
+        };
+        $this->app->instance(MiraiCardsUserResolver::class, $resolver);
+
+        $callback = 'https://client.test/auth/miraicards/callback?'.http_build_query(['state' => $query['state'], 'code' => 'one-time-code']);
+        $this->get($callback)->assertRedirect('/events');
+        $this->assertAuthenticated();
+        $this->assertSame('mirai@example.com', $resolver->identity?->email);
+        $this->assertSame(['openid', 'basic_identity'], $resolver->identity?->scopes);
+
+        $this->withoutExceptionHandling();
+        $this->expectException(MiraiCardsAuthenticationException::class);
+        $this->get($callback);
+    }
+
+    public function test_redirect_rejects_discovery_without_basic_identity_support(): void
+    {
+        $discovery = $this->discovery();
+        $discovery['scopes_supported'] = ['openid'];
+        Http::fake([
+            'https://mirai.cards/.well-known/openid-configuration' => Http::response($discovery),
+        ]);
+        Cache::store('array')->clear();
+
+        $this->withoutExceptionHandling();
+        $this->expectException(MiraiCardsAuthenticationException::class);
+        $this->expectExceptionMessage('The provider discovery document is incompatible.');
+
+        $this->get('https://client.test/auth/miraicards/redirect');
+    }
+
+    public function test_callback_rejects_a_token_response_without_granted_scopes(): void
+    {
+        $this->fakeDiscovery();
+
+        $redirect = $this->get('https://client.test/auth/miraicards/redirect');
+        parse_str((string) parse_url($redirect->headers->get('Location'), PHP_URL_QUERY), $query);
+        Http::fake([
+            'https://mirai.cards/.well-known/openid-configuration' => Http::response($this->discovery()),
+            'https://mirai.cards/oauth/token' => Http::response([
+                'access_token' => 'access-token',
+                'id_token' => 'not-inspected-before-scope-validation',
+            ]),
         ]);
         $this->app->bind(MiraiCardsUserResolver::class, fn () => new class implements MiraiCardsUserResolver
         {
             public function resolve(MiraiCardsIdentity $identity): Authenticatable
             {
-                return new GenericUser(['id' => 42, 'name' => $identity->name]);
+                return new GenericUser(['id' => 42]);
             }
         });
 
-        $callback = 'https://client.test/auth/miraicards/callback?'.http_build_query(['state' => $query['state'], 'code' => 'one-time-code']);
-        $this->get($callback)->assertRedirect('/events');
-        $this->assertAuthenticated();
-
         $this->withoutExceptionHandling();
         $this->expectException(MiraiCardsAuthenticationException::class);
+        $this->expectExceptionMessage('The provider token response did not include its granted scopes.');
+
+        $callback = 'https://client.test/auth/miraicards/callback?'.http_build_query([
+            'state' => $query['state'],
+            'code' => 'one-time-code',
+        ]);
         $this->get($callback);
+    }
+
+    private function fakeDiscovery(): void
+    {
+        Http::fake([
+            'https://mirai.cards/.well-known/openid-configuration' => Http::response($this->discovery()),
+        ]);
     }
 
     /** @return array<string, mixed> */
@@ -113,6 +187,7 @@ class MiraiCardsOidcClientTest extends TestCase
             'jwks_uri' => 'https://mirai.cards/.well-known/jwks.json',
             'code_challenge_methods_supported' => ['S256'],
             'id_token_signing_alg_values_supported' => ['RS256'],
+            'scopes_supported' => ['openid', 'basic_identity'],
         ];
     }
 

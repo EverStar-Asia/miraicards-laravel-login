@@ -30,17 +30,23 @@ final class MiraiCardsDoctorCommand extends Command
         }
 
         try {
-            $discovery = Http::acceptJson()->get($issuer.'/.well-known/openid-configuration')->throw()->json();
-            $jwks = Http::acceptJson()->get($discovery['jwks_uri'])->throw()->json();
+            $http = Http::connectTimeout((int) config('miraicards.connect_timeout'))
+                ->timeout((int) config('miraicards.request_timeout'))
+                ->acceptJson();
+            $discovery = $http->get($issuer.'/.well-known/openid-configuration')->throw()->json();
+            $jwks = $http->get($discovery['jwks_uri'])->throw()->json();
         } catch (Throwable $exception) {
             $this->error('Unable to load discovery/JWKS: '.$exception->getMessage());
 
             return self::FAILURE;
         }
 
+        $supportedScopes = $discovery['scopes_supported'] ?? null;
         if (($discovery['issuer'] ?? null) !== $issuer
             || ($discovery['code_challenge_methods_supported'] ?? null) !== ['S256']
             || ! in_array('RS256', $discovery['id_token_signing_alg_values_supported'] ?? [], true)
+            || ! is_array($supportedScopes)
+            || collect(['openid', 'basic_identity'])->diff($supportedScopes)->isNotEmpty()
             || ! is_array($jwks['keys'] ?? null)
             || $jwks['keys'] === []) {
             $this->error('Discovery or JWKS does not meet MiraiCards login requirements.');
