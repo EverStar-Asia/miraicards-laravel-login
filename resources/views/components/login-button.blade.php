@@ -8,7 +8,7 @@
         alt="{{ $slot->isEmpty() ? __('Sign in with MiraiCards') : $slot }}"
         width="328"
         height="63"
-        class="block h-auto w-full max-w-[20.5rem]"
-        style="display: block; max-width: 100%; height: auto;"
+        class="block h-auto max-h-[50px] w-auto max-w-full"
+        style="display: block; width: auto; max-width: 100%; height: auto; max-height: 50px;"
     >
 </a>

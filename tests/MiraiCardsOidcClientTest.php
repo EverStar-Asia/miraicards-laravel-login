@@ -43,6 +43,8 @@ class MiraiCardsOidcClientTest extends TestCase
         $this->assertStringContainsString('/auth/miraicards/assets/login-button.png', $html);
         $this->assertStringContainsString('width="328"', $html);
         $this->assertStringContainsString('height="63"', $html);
+        $this->assertStringContainsString('width: auto;', $html);
+        $this->assertStringContainsString('max-height: 50px;', $html);
     }
 
     public function test_login_button_image_is_served_directly_by_the_package(): void
