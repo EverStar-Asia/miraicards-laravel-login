@@ -11,6 +11,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
@@ -32,6 +33,13 @@ class MiraiCardsOidcClientTest extends TestCase
             'https://client.test/auth/miraicards/callback',
             config('miraicards.callback_url'),
         );
+    }
+
+    public function test_mobile_broker_routes_are_not_registered_by_default(): void
+    {
+        $this->assertFalse(Route::has('miraicards.mobile.authorize'));
+        $this->assertFalse(Route::has('miraicards.mobile.callback'));
+        $this->assertFalse(Route::has('miraicards.mobile.token'));
     }
 
     public function test_login_button_is_registered_as_a_namespaced_anonymous_component(): void

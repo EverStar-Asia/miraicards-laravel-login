@@ -30,8 +30,7 @@ final class MiraiCardsOidcClient
 
     public function redirect(Request $request, ?string $intended = null): RedirectResponse
     {
-        $this->assertConfiguration();
-        $discovery = $this->discovery();
+        $this->assertConfiguration((string) config('miraicards.callback_url'));
         $verifier = LoginTransactionStore::base64Url(random_bytes(64));
         $nonce = LoginTransactionStore::base64Url(random_bytes(32));
         $callback = (string) config('miraicards.callback_url');
@@ -48,6 +47,17 @@ final class MiraiCardsOidcClient
             'scopes' => self::PROTOCOL_SCOPES,
         ], $binding);
 
+        return $this->redirectToProvider($callback, $state, $nonce, $verifier);
+    }
+
+    public function redirectToProvider(
+        string $callback,
+        string $state,
+        string $nonce,
+        string $verifier,
+    ): RedirectResponse {
+        $this->assertConfiguration($callback);
+        $discovery = $this->discovery();
         $query = http_build_query([
             'client_id' => config('miraicards.client_id'),
             'redirect_uri' => $callback,
@@ -64,17 +74,28 @@ final class MiraiCardsOidcClient
 
     public function callback(Request $request): MiraiCardsIdentity
     {
-        $this->assertConfiguration();
-        if (! hash_equals((string) config('miraicards.callback_url'), $request->url())) {
-            throw new MiraiCardsAuthenticationException('The callback URI does not match the configured URI.');
-        }
-
         $binding = $request->session()->get('miraicards.session_binding');
         if (! is_string($binding) || $binding === '') {
             throw new MiraiCardsAuthenticationException('The initiating login session is unavailable.');
         }
         $transaction = $this->transactions->consume((string) $request->query('state'), $binding);
         $request->attributes->set('miraicards.intended', $transaction['intended'] ?? null);
+
+        return $this->completeCallback($request, $transaction);
+    }
+
+    /** @param array<string, mixed> $transaction */
+    public function completeCallback(Request $request, array $transaction): MiraiCardsIdentity
+    {
+        $callback = $transaction['callback'] ?? null;
+        if (! is_string($callback)) {
+            throw new MiraiCardsAuthenticationException('The callback transaction is invalid.');
+        }
+        $this->assertConfiguration($callback);
+        if (! hash_equals($callback, $request->url())) {
+            throw new MiraiCardsAuthenticationException('The callback URI does not match the configured URI.');
+        }
+
         if ($request->filled('error')) {
             throw new MiraiCardsAuthenticationException('MiraiCards denied the login request: '.$request->string('error')->toString());
         }
@@ -196,7 +217,7 @@ final class MiraiCardsOidcClient
             ->get($issuer.'/.well-known/openid-configuration')->throw()->json());
         $supportedScopes = $document['scopes_supported'] ?? null;
         if (($document['issuer'] ?? null) !== $issuer
-            || ($document['code_challenge_methods_supported'] ?? null) !== ['S256']
+            || ! in_array('S256', $document['code_challenge_methods_supported'] ?? [], true)
             || ! in_array('RS256', $document['id_token_signing_alg_values_supported'] ?? [], true)
             || ! is_array($supportedScopes)
             || collect(self::PROTOCOL_SCOPES)->diff($supportedScopes)->isNotEmpty()) {
@@ -232,9 +253,9 @@ final class MiraiCardsOidcClient
             ->acceptJson();
     }
 
-    private function assertConfiguration(): void
+    private function assertConfiguration(string $callback): void
     {
-        foreach (['issuer', 'client_id', 'client_secret', 'callback_url'] as $key) {
+        foreach (['issuer', 'client_id', 'client_secret'] as $key) {
             if (! is_string(config('miraicards.'.$key)) || trim((string) config('miraicards.'.$key)) === '') {
                 throw new MiraiCardsAuthenticationException("The miraicards.{$key} configuration value is required.");
             }
