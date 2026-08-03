@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Cache;
 
 final class LoginTransactionStore
 {
-    /** @param array<string, string|null> $transaction */
+    /** @param array<string, mixed> $transaction */
     public function put(array $transaction, string $sessionBinding): string
     {
         $state = self::base64Url(random_bytes(32));
@@ -20,7 +20,7 @@ final class LoginTransactionStore
         return $state;
     }
 
-    /** @return array<string, string|null> */
+    /** @return array<string, mixed> */
     public function consume(string $state, string $sessionBinding): array
     {
         if (preg_match('/^[A-Za-z0-9_-]{43}$/', $state) !== 1) {

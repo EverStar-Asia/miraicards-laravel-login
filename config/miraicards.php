@@ -14,4 +14,15 @@ return [
     'connect_timeout' => (int) env('MIRAICARDS_CONNECT_TIMEOUT', 5),
     'request_timeout' => (int) env('MIRAICARDS_REQUEST_TIMEOUT', 10),
     'clock_skew' => 60,
+    'mobile_broker' => [
+        'enabled' => env('MIRAICARDS_MOBILE_BROKER_ENABLED', false),
+        'callback_url' => env(
+            'MIRAICARDS_MOBILE_CALLBACK_URI',
+            rtrim((string) config('app.url'), '/').'/auth/miraicards/mobile/callback',
+        ),
+        'clients' => [],
+        'middleware' => ['throttle:60,1'],
+        'transaction_ttl' => 600,
+        'code_ttl' => 60,
+    ],
 ];
