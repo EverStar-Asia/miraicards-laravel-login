@@ -1,0 +1,67 @@
+.miraicards-login-button {
+    appearance: none;
+    display: inline-flex;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 6px;
+    padding: 0 16px;
+    background: linear-gradient(90deg, #08c9e4 0%, #181a63 100%);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+    text-decoration: none;
+    vertical-align: middle;
+    transition: filter 150ms ease;
+}
+
+.miraicards-login-button:hover {
+    color: #fff;
+    filter: brightness(95%);
+    text-decoration: none;
+}
+
+.miraicards-login-button:focus {
+    outline: none;
+}
+
+.miraicards-login-button:focus-visible {
+    outline: 2px solid #08c9e4;
+    outline-offset: 2px;
+}
+
+.miraicards-login-button__icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex: none;
+}
+
+.miraicards-login-button__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .miraicards-login-button {
+        transition: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .miraicards-login-button {
+        border: 1px solid ButtonText;
+    }
+}

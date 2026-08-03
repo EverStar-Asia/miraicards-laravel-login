@@ -40,23 +40,57 @@ class MiraiCardsOidcClientTest extends TestCase
 
         $this->assertStringContainsString('/auth/miraicards/redirect', $html);
         $this->assertStringContainsString('Sign in with MiraiCards', $html);
-        $this->assertStringContainsString('/auth/miraicards/assets/login-button.png', $html);
-        $this->assertStringContainsString('width="328"', $html);
-        $this->assertStringContainsString('height="63"', $html);
-        $this->assertStringContainsString('width: auto;', $html);
-        $this->assertStringContainsString('max-height: 50px;', $html);
+        $this->assertStringContainsString('/auth/miraicards/assets/login-button.css', $html);
+        $this->assertStringContainsString('/auth/miraicards/assets/icon.svg', $html);
+        $this->assertStringContainsString('width="20"', $html);
+        $this->assertStringContainsString('height="20"', $html);
+        $this->assertStringContainsString('miraicards-login-button', $html);
+        $this->assertStringNotContainsString('focus:ring', $html);
     }
 
-    public function test_login_button_image_is_served_directly_by_the_package(): void
+    public function test_login_button_supports_a_translated_label(): void
     {
-        $response = $this->get('https://client.test/auth/miraicards/assets/login-button.png');
+        $html = Blade::render('<x-miraicards::login-button>ミライカードでサインイン</x-miraicards::login-button>');
+
+        $this->assertStringContainsString('ミライカードでサインイン', $html);
+    }
+
+    public function test_login_button_only_loads_its_stylesheet_once_per_view(): void
+    {
+        $html = Blade::render('<x-miraicards::login-button /><x-miraicards::login-button />');
+
+        $this->assertSame(1, substr_count($html, '/auth/miraicards/assets/login-button.css'));
+        $this->assertSame(2, substr_count($html, 'class="miraicards-login-button"'));
+    }
+
+    public function test_login_button_stylesheet_is_served_directly_by_the_package(): void
+    {
+        $response = $this->get('https://client.test/auth/miraicards/assets/login-button.css');
 
         $response->assertOk()
-            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('Content-Type', 'text/css; charset=UTF-8')
+            ->assertHeader('Cache-Control', 'max-age=604800, public')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+        $stylesheet = $response->streamedContent();
+        $this->assertSame(
+            file_get_contents(__DIR__.'/../resources/css/miraicards-login.css'),
+            $stylesheet,
+        );
+        $this->assertStringContainsString('width: 100%;', $stylesheet);
+        $this->assertStringContainsString('height: 44px;', $stylesheet);
+        $this->assertStringContainsString('linear-gradient(90deg, #08c9e4 0%, #181a63 100%)', $stylesheet);
+    }
+
+    public function test_login_button_icon_is_served_directly_by_the_package(): void
+    {
+        $response = $this->get('https://client.test/auth/miraicards/assets/icon.svg');
+
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'image/svg+xml')
             ->assertHeader('Cache-Control', 'max-age=604800, public')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
         $this->assertSame(
-            file_get_contents(__DIR__.'/../resources/images/btn_miraicardsOIDC.png'),
+            file_get_contents(__DIR__.'/../resources/images/miraicards-icon.svg'),
             $response->streamedContent(),
         );
     }

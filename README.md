@@ -6,6 +6,6 @@ Install from the private GitHub repository through an authenticated Composer VCS
 
 The package always requests MiraiCards Basic identity. Applications do not configure scopes. The identity response contains the pairwise subject, name, and email address.
 
-The login button image is served directly by the package and does not require asset publishing.
+The login button stylesheet and icon are served directly by the package and do not require asset publishing. The component has no Tailwind CSS or other frontend framework dependency.
 
 Run `php artisan miraicards:doctor` after configuring the application. Provider callback registration remains a manual administrator check.

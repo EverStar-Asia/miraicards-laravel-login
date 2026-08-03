@@ -27,8 +27,10 @@ final class MiraiCardsServiceProvider extends ServiceProvider
             __DIR__.'/../resources/views' => resource_path('views/vendor/miraicards'),
         ], 'miraicards-views');
 
-        Route::get('/auth/miraicards/assets/login-button.png', [MiraiCardsAssetController::class, 'loginButton'])
-            ->name('miraicards.assets.login-button');
+        Route::get('/auth/miraicards/assets/icon.svg', [MiraiCardsAssetController::class, 'icon'])
+            ->name('miraicards.assets.icon');
+        Route::get('/auth/miraicards/assets/login-button.css', [MiraiCardsAssetController::class, 'stylesheet'])
+            ->name('miraicards.assets.stylesheet');
 
         Route::middleware('web')->group(function (): void {
             Route::get('/auth/miraicards/redirect', [MiraiCardsLoginController::class, 'redirect'])
