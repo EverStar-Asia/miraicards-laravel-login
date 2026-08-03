@@ -42,8 +42,8 @@ class MiraiCardsOidcClientTest extends TestCase
         $this->assertStringContainsString('Sign in with MiraiCards', $html);
         $this->assertStringContainsString('/auth/miraicards/assets/login-button.css', $html);
         $this->assertStringContainsString('/auth/miraicards/assets/icon.svg', $html);
-        $this->assertStringContainsString('width="20"', $html);
-        $this->assertStringContainsString('height="20"', $html);
+        $this->assertStringContainsString('width="28"', $html);
+        $this->assertStringContainsString('height="28"', $html);
         $this->assertStringContainsString('miraicards-login-button', $html);
         $this->assertStringNotContainsString('focus:ring', $html);
     }
@@ -78,6 +78,8 @@ class MiraiCardsOidcClientTest extends TestCase
         );
         $this->assertStringContainsString('width: 100%;', $stylesheet);
         $this->assertStringContainsString('height: 44px;', $stylesheet);
+        $this->assertStringContainsString('width: 28px;', $stylesheet);
+        $this->assertStringContainsString('height: 28px;', $stylesheet);
         $this->assertStringContainsString('linear-gradient(90deg, #08c9e4 0%, #181a63 100%)', $stylesheet);
     }
 
