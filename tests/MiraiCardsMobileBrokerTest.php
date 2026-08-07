@@ -49,7 +49,7 @@ class MiraiCardsMobileBrokerTest extends TestCase
         $verifier = str_repeat('a', 43);
         $challenge = $this->challenge($verifier);
 
-        $response = $this->get($this->authorizeUrl($challenge, 'app-state'))->assertRedirect();
+        $response = $this->get($this->authorizeUrl($challenge, 'app-state').'&ui_locales=zh-CN')->assertRedirect();
         $this->assertNull($response->headers->get('Set-Cookie'));
         parse_str((string) parse_url($response->headers->get('Location'), PHP_URL_QUERY), $providerQuery);
 
@@ -58,6 +58,7 @@ class MiraiCardsMobileBrokerTest extends TestCase
         $this->assertNotSame($challenge, $providerQuery['code_challenge']);
         $this->assertNotSame('app-state', $providerQuery['state']);
         $this->assertNotEmpty($providerQuery['nonce']);
+        $this->assertSame('zh-CN', $providerQuery['ui_locales']);
     }
 
     public function test_mobile_flow_resolves_user_and_returns_custom_session_only_after_code_exchange(): void

@@ -47,7 +47,7 @@ final class MiraiCardsOidcClient
             'scopes' => self::PROTOCOL_SCOPES,
         ], $binding);
 
-        return $this->redirectToProvider($callback, $state, $nonce, $verifier);
+        return $this->redirectToProvider($callback, $state, $nonce, $verifier, app()->getLocale());
     }
 
     public function redirectToProvider(
@@ -55,6 +55,7 @@ final class MiraiCardsOidcClient
         string $state,
         string $nonce,
         string $verifier,
+        ?string $uiLocales = null,
     ): RedirectResponse {
         $this->assertConfiguration($callback);
         $discovery = $this->discovery();
@@ -67,9 +68,25 @@ final class MiraiCardsOidcClient
             'nonce' => $nonce,
             'code_challenge' => LoginTransactionStore::base64Url(hash('sha256', $verifier, true)),
             'code_challenge_method' => 'S256',
+            'ui_locales' => $this->normalizeUiLocales($uiLocales),
         ], '', '&', PHP_QUERY_RFC3986);
 
         return redirect()->away($discovery['authorization_endpoint'].'?'.$query);
+    }
+
+    private function normalizeUiLocales(?string $uiLocales): ?string
+    {
+        if ($uiLocales === null) {
+            return null;
+        }
+
+        $locales = collect(preg_split('/\s+/', trim($uiLocales)) ?: [])
+            ->map(fn (string $locale): string => str_replace('_', '-', $locale))
+            ->filter(fn (string $locale): bool => preg_match('/\A[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*\z/', $locale) === 1)
+            ->take(10)
+            ->values();
+
+        return $locales->isEmpty() ? null : $locales->implode(' ');
     }
 
     public function callback(Request $request): MiraiCardsIdentity

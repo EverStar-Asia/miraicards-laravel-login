@@ -55,7 +55,13 @@ final class MiraiCardsMobileBrokerController
         ]);
 
         try {
-            return $oidc->redirectToProvider($callback, $providerState, $nonce, $verifier);
+            return $oidc->redirectToProvider(
+                $callback,
+                $providerState,
+                $nonce,
+                $verifier,
+                $request->string('ui_locales')->toString(),
+            );
         } catch (Throwable $exception) {
             return $this->error('server_error', 500);
         }

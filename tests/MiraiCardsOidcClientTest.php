@@ -108,6 +108,7 @@ class MiraiCardsOidcClientTest extends TestCase
     public function test_redirect_uses_pkce_nonce_and_independent_state_for_concurrent_tabs(): void
     {
         $this->fakeDiscovery();
+        app()->setLocale('zh_HK');
 
         $first = $this->get('https://client.test/auth/miraicards/redirect?intended=%2Fevents')->assertRedirect();
         $second = $this->get('https://client.test/auth/miraicards/redirect?intended=https%3A%2F%2Fevil.test')->assertRedirect();
@@ -120,6 +121,7 @@ class MiraiCardsOidcClientTest extends TestCase
         $this->assertSame('openid basic_identity', $firstQuery['scope']);
         $this->assertNotEmpty($firstQuery['nonce']);
         $this->assertSame('https://client.test/auth/miraicards/callback', $firstQuery['redirect_uri']);
+        $this->assertSame('zh-HK', $firstQuery['ui_locales']);
     }
 
     public function test_callback_validates_tokens_logs_in_and_rejects_replayed_state(): void

@@ -6,6 +6,8 @@ Install from the private GitHub repository through an authenticated Composer VCS
 
 The package always requests MiraiCards Basic identity. Applications do not configure scopes. The identity response contains the pairwise subject, name, and email address.
 
+Interactive login automatically sends the host application's current Laravel locale to MiraiCards using the OpenID Connect `ui_locales` parameter. Locale names containing underscores are converted to BCP 47-style hyphens, for example `zh_HK` becomes `zh-HK`.
+
 The login button stylesheet and icon are served directly by the package and do not require asset publishing. The component has no Tailwind CSS or other frontend framework dependency.
 
 Run `php artisan miraicards:doctor` after configuring the application. Provider callback registration remains a manual administrator check.
@@ -59,7 +61,7 @@ final class MobileSessionIssuer implements MiraiCardsMobileSessionIssuer
 
 The native app performs these steps:
 
-1. Generate a PKCE verifier and S256 challenge, then open `GET /auth/miraicards/mobile/authorize` in the system browser with `client_id`, exact `redirect_uri`, opaque `state`, `code_challenge`, and `code_challenge_method=S256`.
+1. Generate a PKCE verifier and S256 challenge, then open `GET /auth/miraicards/mobile/authorize` in the system browser with `client_id`, exact `redirect_uri`, opaque `state`, `code_challenge`, and `code_challenge_method=S256`. The optional OpenID Connect `ui_locales` parameter is forwarded to MiraiCards so the provider can render the requested language.
 2. MiraiCards returns to the broker's HTTPS `GET /auth/miraicards/mobile/callback`. The broker verifies the provider response and redirects to the registered app URI with a short-lived, one-time `code` and the original app state. The HTTPS callback must reach Laravel and must not be intercepted as an application universal link.
 3. Exchange the code at `POST /auth/miraicards/mobile/token` using form fields `grant_type=authorization_code`, `client_id`, the same `redirect_uri`, `code`, and `code_verifier`.
 
